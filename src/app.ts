@@ -3,6 +3,7 @@ import { attachWASDControls, car } from './geometries/car';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { createCones } from './geometries/cones';
 import { createHorizontalPlane } from './geometries/horizontal-plane';
+import Stats from 'three/examples/jsm/libs/stats.module'
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcccccc);
@@ -63,6 +64,9 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+const stats = Stats()
+document.body.appendChild(stats.dom)
+
 window.addEventListener('resize', onWindowResize);
 
 function onWindowResize() {
@@ -74,6 +78,7 @@ function onWindowResize() {
 
 function animate() {
 	requestAnimationFrame(animate);
+	stats.update();
 }
 
 function render() {
