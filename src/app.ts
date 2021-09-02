@@ -78,6 +78,7 @@ function onWindowResize() {
 
 function animate() {
 	requestAnimationFrame(animate);
+	render();
 	stats.update();
 }
 
@@ -85,4 +86,4 @@ function render() {
 	renderer.render(scene, camera);
 }
 
-render();
+animate();
