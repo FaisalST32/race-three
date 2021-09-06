@@ -2,7 +2,10 @@
 	"compilerOptions": {
 		"moduleResolution": "node",
 		"strict": true,
-		"outDir": "../dist"
+		"outDir": "../dist",
+		"paths": {
+			"three/examples/jsm/libs/tween.module.min": ["./typings/tween.js"]
+		}
 	},
 	"include": ["**/*.ts"]
 }
