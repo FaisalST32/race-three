@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { TWEEN } from 'three/examples/jsm/libs/tween.module.min';
-import { attachWASDControls, car } from './geometries/car';
+// import { attachWASDControls, car } from './geometries/car';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { createCones } from './geometries/cones';
 import { createHorizontalPlane } from './geometries/horizontal-plane';
 import Stats from 'three/examples/jsm/libs/stats.module';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcccccc);
@@ -15,10 +18,11 @@ scene.fog = fog;
 const axes = new THREE.AxesHelper(10);
 scene.add(axes);
 
+let car: THREE.Object3D;
 // add the car
-car.position.y = 0.5;
-car.castShadow = true;
-scene.add(car);
+// car.position.y = 0.5;
+// car.castShadow = true;
+// scene.add(car);
 // attachWASDControls(car, render);
 
 // add the camera
@@ -72,58 +76,89 @@ document.addEventListener(
 
 let keyListeners: Function[] = [];
 
-keyListeners.push((keys: any) => {
-	if (!keys.D && !keys.A) {
-		return;
-	}
-	const speed = 0.4;
-	let axis: 'z' | 'x' = 'x';
-	let direction: -1 | 1 = 1;
-	const originalPosition = car.position;
-	switch (true) {
-		case keys.A:
-			axis = 'x';
-			direction = -1;
-			car.rotateY((-direction * Math.PI) / 30);
-			// mesh.position.x -= speed;
-			break;
-		case keys.D:
-			axis = 'x';
-			direction = 1;
-			car.rotateY((-direction * Math.PI) / 30);
-			// mesh.position.x += speed;
-			break;
+// load a car
+const mtlLoader = new MTLLoader();
+const gltfLoader = new GLTFLoader();
+// gltfLoader.load(
+// 	'models/car.glb',
+// (materials) => {
+// 	materials.preload();
+// 	console.log(materials);
+// 	const objLoader = new OBJLoader();
+// 	objLoader.setMaterials(materials);
+gltfLoader.load(
+	'models/car.glb',
+	(gltf) => {
+		car = gltf.scene;
+		console.log({ object: gltf });
+		scene.add(gltf.scene);
+		keyListeners.push((keys: any) => {
+			if (!keys.D && !keys.A) {
+				return;
+			}
+			const speed = 0.4;
+			let axis: 'z' | 'x' = 'x';
+			let direction: -1 | 1 = 1;
+			const originalPosition = car.position;
+			switch (true) {
+				case keys.A:
+					axis = 'x';
+					direction = -1;
+					car.rotateY((-direction * Math.PI) / 30);
+					// mesh.position.x -= speed;
+					break;
+				case keys.D:
+					axis = 'x';
+					direction = 1;
+					car.rotateY((-direction * Math.PI) / 30);
+					// mesh.position.x += speed;
+					break;
 
-		default:
-			return;
+				default:
+					return;
+			}
+		});
+		keyListeners.push((keys: any) => {
+			if (!keys.W && !keys.S) {
+				return;
+			}
+			const speed = 0.4;
+			let axis: 'z' | 'x' = 'x';
+			let direction: -1 | 1 = 1;
+			const originalPosition = car.position;
+			switch (true) {
+				case keys.W:
+					axis = 'z';
+					direction = -1;
+					car.translateZ(direction * speed);
+					// mesh.position.z -= speed;w
+					break;
+				case keys.S:
+					axis = 'z';
+					direction = 1;
+					car.translateZ(direction * speed);
+					// mesh.position.z += speed;
+					break;
+				default:
+					return;
+			}
+		});
+	},
+	(xhr: { loaded: number; total: number }) => {
+		console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+	},
+	(error: any) => {
+		console.log('An error happened');
 	}
-});
-
-keyListeners.push((keys: any) => {
-	if (!keys.W && !keys.S) {
-		return;
-	}
-	const speed = 0.4;
-	let axis: 'z' | 'x' = 'x';
-	let direction: -1 | 1 = 1;
-	const originalPosition = car.position;
-	switch (true) {
-		case keys.W:
-			axis = 'z';
-			direction = -1;
-			car.translateZ(direction * speed);
-			// mesh.position.z -= speed;w
-			break;
-		case keys.S:
-			axis = 'z';
-			direction = 1;
-			car.translateZ(direction * speed);
-			// mesh.position.z += speed;
-			break;
-		default:
-			return;
-	}
-});
+);
+// 	},
+// 	(xhr) => {
+// 		console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+// 	},
+// 	(error) => {
+// 		console.log('An error happened');
+// 	}
+// );
 
 const helper = new THREE.CameraHelper(light.shadow.camera);
 scene.add(helper);
@@ -154,8 +189,9 @@ function onWindowResize() {
 function animate() {
 	// controls.maxDistance = 10;
 	keyListeners.forEach((listener) => listener(keysHeld));
-	console.log({ keysHeld });
-	controls.target.copy(car.position);
+	if (car) {
+		controls.target.copy(car.position);
+	}
 	controls.update();
 	TWEEN.update();
 	requestAnimationFrame(animate);
