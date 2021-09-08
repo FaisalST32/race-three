@@ -98,11 +98,11 @@ gltfLoader.load(
 			switch (true) {
 				case keys.A:
 					direction = -1;
-					car.rotateY((-direction * Math.PI) / 30);
+					car.rotateY((-direction * Math.PI) / 50);
 					break;
 				case keys.D:
 					direction = 1;
-					car.rotateY((-direction * Math.PI) / 30);
+					car.rotateY((-direction * Math.PI) / 50);
 					break;
 
 				default:
@@ -144,12 +144,16 @@ const plane = createHorizontalPlane(1000, 800);
 scene.add(plane);
 
 const renderer = new THREE.WebGLRenderer();
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.addEventListener('change', render);
+
+// controls.addEventListener('change', render);
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.minPolarAngle = 0;
+controls.maxPolarAngle = Math.PI / 2.1;
 
 const stats = Stats();
 document.body.appendChild(stats.dom);
@@ -164,7 +168,7 @@ function onWindowResize() {
 }
 
 function animate() {
-	// controls.maxDistance = 10;
+	// controls.maxDistance = 20;
 	keyListeners.forEach((listener) => listener(keysHeld));
 	if (car) {
 		controls.target.copy(car.position);
