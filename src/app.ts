@@ -5,8 +5,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { createCones } from './geometries/cones';
 import { createHorizontalPlane } from './geometries/horizontal-plane';
 import Stats from 'three/examples/jsm/libs/stats.module';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 const scene = new THREE.Scene();
@@ -15,8 +13,8 @@ scene.background = new THREE.Color(0xcccccc);
 const fog = new THREE.Fog(0xcccccc, 1, 200);
 scene.fog = fog;
 
-const axes = new THREE.AxesHelper(10);
-scene.add(axes);
+// const axes = new THREE.AxesHelper(10);
+// scene.add(axes);
 
 let car: THREE.Object3D;
 // add the car
@@ -45,13 +43,13 @@ const cones = createCones({
 	maxConeRadius: 0.4,
 });
 
-scene.add(...cones);
+// scene.add(...cones);
 
 // add directional light with shadow
 const light = new THREE.DirectionalLight();
 light.castShadow = true;
-light.shadow.mapSize.width = 2048;
-light.shadow.mapSize.height = 2048;
+light.shadow.mapSize.width = 8192;
+light.shadow.mapSize.height = 8192;
 light.shadow.camera.near = 0.5;
 light.shadow.camera.far = 100;
 light.shadow.camera.right = 100;
@@ -77,41 +75,34 @@ document.addEventListener(
 let keyListeners: Function[] = [];
 
 // load a car
-const mtlLoader = new MTLLoader();
 const gltfLoader = new GLTFLoader();
-// gltfLoader.load(
-// 	'models/car.glb',
-// (materials) => {
-// 	materials.preload();
-// 	console.log(materials);
-// 	const objLoader = new OBJLoader();
-// 	objLoader.setMaterials(materials);
 gltfLoader.load(
 	'models/car.glb',
 	(gltf) => {
 		car = gltf.scene;
-		console.log({ object: gltf });
-		scene.add(gltf.scene);
+		car.traverse((mesh) => {
+			if ((mesh as THREE.Mesh).isMesh) {
+				mesh.castShadow = true;
+				// mesh.receiveShadow = true;
+			}
+		});
+		car.castShadow = true;
+		scene.add(car);
 		keyListeners.push((keys: any) => {
+			const isCarMoving = keys.W || keys.S;
+			if (!isCarMoving) return;
 			if (!keys.D && !keys.A) {
 				return;
 			}
-			const speed = 0.4;
-			let axis: 'z' | 'x' = 'x';
 			let direction: -1 | 1 = 1;
-			const originalPosition = car.position;
 			switch (true) {
 				case keys.A:
-					axis = 'x';
 					direction = -1;
 					car.rotateY((-direction * Math.PI) / 30);
-					// mesh.position.x -= speed;
 					break;
 				case keys.D:
-					axis = 'x';
 					direction = 1;
 					car.rotateY((-direction * Math.PI) / 30);
-					// mesh.position.x += speed;
 					break;
 
 				default:
@@ -123,21 +114,15 @@ gltfLoader.load(
 				return;
 			}
 			const speed = 0.4;
-			let axis: 'z' | 'x' = 'x';
 			let direction: -1 | 1 = 1;
-			const originalPosition = car.position;
 			switch (true) {
 				case keys.W:
-					axis = 'z';
 					direction = -1;
 					car.translateZ(direction * speed);
-					// mesh.position.z -= speed;w
 					break;
 				case keys.S:
-					axis = 'z';
 					direction = 1;
 					car.translateZ(direction * speed);
-					// mesh.position.z += speed;
 					break;
 				default:
 					return;
@@ -151,17 +136,9 @@ gltfLoader.load(
 		console.log('An error happened');
 	}
 );
-// 	},
-// 	(xhr) => {
-// 		console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-// 	},
-// 	(error) => {
-// 		console.log('An error happened');
-// 	}
-// );
 
-const helper = new THREE.CameraHelper(light.shadow.camera);
-scene.add(helper);
+// const helper = new THREE.CameraHelper(light.shadow.camera);
+// scene.add(helper);
 
 const plane = createHorizontalPlane(1000, 800);
 scene.add(plane);
