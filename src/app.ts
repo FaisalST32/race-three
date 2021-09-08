@@ -140,8 +140,11 @@ gltfLoader.load(
 // const helper = new THREE.CameraHelper(light.shadow.camera);
 // scene.add(helper);
 
-const plane = createHorizontalPlane(1000, 800);
+const plane = createHorizontalPlane(100, 100);
 scene.add(plane);
+
+// const gridHelper = new THREE.GridHelper(100, 50, 0xff0000, 0x00ff00);
+// scene.add(gridHelper);
 
 const renderer = new THREE.WebGLRenderer();
 
