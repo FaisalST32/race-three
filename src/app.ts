@@ -88,6 +88,8 @@ gltfLoader.load(
 		});
 		car.castShadow = true;
 		scene.add(car);
+
+		// turn the car
 		keyListeners.push((keys: any) => {
 			const isCarMoving = keys.W || keys.S;
 			if (!isCarMoving) return;
@@ -97,18 +99,20 @@ gltfLoader.load(
 			let direction: -1 | 1 = 1;
 			switch (true) {
 				case keys.A:
-					direction = -1;
-					car.rotateY((-direction * Math.PI) / 50);
+					direction = keys.W ? 1 : -1;
+					car.rotateY((direction * Math.PI) / 50);
 					break;
 				case keys.D:
-					direction = 1;
-					car.rotateY((-direction * Math.PI) / 50);
+					direction = keys.W ? -1 : 1;
+					car.rotateY((direction * Math.PI) / 50);
 					break;
 
 				default:
 					return;
 			}
 		});
+
+		// move the car
 		keyListeners.push((keys: any) => {
 			if (!keys.W && !keys.S) {
 				return;
