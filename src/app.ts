@@ -202,7 +202,10 @@ function addCarPhysics(mesh: THREE.Mesh) {
 	// 	chassisBody: carBody
 	// })
 	// carBody.velocity = new CANNON.Vec3(0, 0, 1);
-	carBody.addShape(new CANNON.Box(new CANNON.Vec3(0.8, 0.6, 1.8)));
+	carBody.addShape(
+		new CANNON.Box(new CANNON.Vec3(0.8, 0.6, 1.8)),
+		new CANNON.Vec3(0, 0.55, 0)
+	);
 	// carBody.addShape(
 	// 	new CANNON.Box(new CANNON.Vec3(0.025, 0.2, 0.2)),
 	// 	new CANNON.Vec3(0.4, -0.3, 0.9)
@@ -514,7 +517,7 @@ function animate() {
 
 		car.position.set(
 			carBody.position.x,
-			carBody.position.y - 0.55,
+			carBody.position.y,
 			carBody.position.z
 		);
 
