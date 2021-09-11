@@ -62,6 +62,10 @@ const ballGroundContactMaterial = new CANNON.ContactMaterial(
 physicsWorld.addContactMaterial(wheelGroundContactMaterial);
 physicsWorld.addContactMaterial(ballGroundContactMaterial);
 
+const PLANE_ID = 1;
+const CAR_ID = 2;
+const BALL_ID = 3;
+
 // const cannonDebugRenderer = new CannonDebugRenderer(scene, physicsWorld);
 
 let car: THREE.Object3D;
@@ -135,11 +139,9 @@ gltfLoader.load(
 				// mesh.receiveShadow = true;
 			}
 		});
-		console.log(car);
 		car.castShadow = true;
 		car.position.y = 1;
 		scene.add(car);
-		console.log(car);
 		car.userData.physicsBody = addCarPhysics(
 			car.children[0].children[0] as THREE.Mesh
 		);
@@ -179,7 +181,7 @@ function dropSphere() {
 		mass: 20,
 		material: ballMaterial,
 	});
-
+	sphereBody.id = BALL_ID;
 	sphereBody.addShape(new CANNON.Sphere(radius));
 	sphereBody.position.set(x, y, z);
 	physicsWorld.addBody(sphereBody);
@@ -190,6 +192,7 @@ function dropSphere() {
 // const helper = new THREE.CameraHelper(light.shadow.camera);
 // scene.add(helper);
 let carBody: CANNON.Body;
+let isCarOnGround: boolean = false;
 function addCarPhysics(mesh: THREE.Mesh) {
 	carBody = new CANNON.Body({
 		mass: 1000,
@@ -197,7 +200,7 @@ function addCarPhysics(mesh: THREE.Mesh) {
 		material: wheelMaterial,
 		// angularVelocity: new CANNON.Vec3(0, 0, 1),
 	});
-
+	carBody.id = CAR_ID;
 	// const vehicle = new CANNON.RaycastVehicle({
 	// 	chassisBody: carBody
 	// })
@@ -228,16 +231,15 @@ function addCarPhysics(mesh: THREE.Mesh) {
 	carBody.angularDamping = 0.99;
 	carBody.linearDamping = 0.95;
 	physicsWorld.addBody(carBody);
-	console.log(carBody.quaternion);
+	// console.log(carBody.quaternion);
 
 	keyListeners.push((keys: any) => {
+		if (!isCarOnGround) return;
 		if (!keys.W && !keys.S) {
 			return;
 		}
-		console.log('moving');
 		const speed = 20;
 		const direction = keys.W ? -1 : 1;
-		// const currentVelocity = carBody.velocity.clone();
 		// let newVelocity = new THREE.Vector3(
 		// 	currentVelocity.x,
 		// 	currentVelocity.y,
@@ -248,8 +250,17 @@ function addCarPhysics(mesh: THREE.Mesh) {
 		// newVelocity = carBody.quaternion.vmult(newVelocity);
 		// carBody.velocity.set(newVelocity.x, newVelocity.y, newVelocity.z);
 
-		var localVelocity = new CANNON.Vec3(0, 0, direction * speed);
+		const currentVelocity = carBody.velocity.clone();
+		const localVelocity = new CANNON.Vec3(0, 0, direction * speed);
+		// const finalVelocity = currentVelocity.vadd(localVelocity);
 		carBody.quaternion.normalize().vmult(localVelocity, carBody.velocity);
+
+		// carBody.velocity.set(
+		// 	normalizedVelocity.x,
+		// 	// TODO: Figure out a better way to incorporate gravity
+		// 	Math.min(normalizedVelocity.y, 0),
+		// 	normalizedVelocity.z
+		// );
 	});
 
 	keyListeners.push((keys: any) => {
@@ -275,180 +286,40 @@ function addCarPhysics(mesh: THREE.Mesh) {
 	});
 
 	keyListeners.push((keys: any) => {
-		if (!keys.Z) {
+		if (!keys[' '] || !isCarOnGround) {
 			return;
 		}
 		console.log('impulsing');
-		var accelerationDirection = new CANNON.Vec3(0, 0, 1000);
+		var accelerationDirection = new CANNON.Vec3(0, 0, -10000);
 		var accelerationImpulse = carBody.quaternion.vmult(accelerationDirection);
-		var bodyCenter = new CANNON.Vec3(
-			carBody.position.x,
-			carBody.position.y,
-			carBody.position.z
-		);
-		carBody.applyImpulse(accelerationImpulse, bodyCenter);
+		carBody.applyImpulse(accelerationImpulse);
 	});
 	return carBody;
 }
-let vehicle: CANNON.RaycastVehicle;
-function addVehicle() {
-	let chassisBody = new CANNON.Body({
-		mass: 1,
-		// velocity: new CANNON.Vec3(0, 0, -20),
-		material: new CANNON.Material({ friction: 0.1 }),
-		// angularVelocity: new CANNON.Vec3(0, 0, 1),
-	});
 
-	// const vehicle = new CANNON.RaycastVehicle({
-	// 	chassisBody: carBody
-	// })
-	// carBody.velocity = new CANNON.Vec3(0, 0, 1);
-	carBody.addShape(new CANNON.Box(new CANNON.Vec3(0.8, 0.5, 1.8)));
-	carBody.position.set(0, 1, 0);
-	chassisBody.angularVelocity.set(0, 0.5, 0);
-
-	vehicle = new CANNON.RaycastVehicle({
-		chassisBody,
-	});
-
-	const wheelOptions = {
-		radius: 0.5,
-		directionLocal: new CANNON.Vec3(0, -1, 0),
-		suspensionStiffness: 30,
-		suspensionRestLength: 0.3,
-		frictionSlip: 1.4,
-		dampingRelaxation: 2.3,
-		dampingCompression: 4.4,
-		maxSuspensionForce: 100000,
-		rollInfluence: 0.01,
-		axleLocal: new CANNON.Vec3(0, 0, 1),
-		chassisConnectionPointLocal: new CANNON.Vec3(-1, 0, 1),
-		maxSuspensionTravel: 0.3,
-		customSlidingRotationalSpeed: -30,
-		useCustomSlidingRotationalSpeed: true,
-	};
-
-	wheelOptions.chassisConnectionPointLocal.set(-1, 0, 1);
-	vehicle.addWheel(wheelOptions);
-
-	wheelOptions.chassisConnectionPointLocal.set(-1, 0, -1);
-	vehicle.addWheel(wheelOptions);
-
-	wheelOptions.chassisConnectionPointLocal.set(1, 0, 1);
-	vehicle.addWheel(wheelOptions);
-
-	wheelOptions.chassisConnectionPointLocal.set(1, 0, -1);
-	vehicle.addWheel(wheelOptions);
-
-	vehicle.addToWorld(physicsWorld);
-
-	// Add the wheel bodies
-	const wheelBodies: CANNON.Body[] = [];
-	const wheelMaterial = new CANNON.Material('wheel');
-	vehicle.wheelInfos.forEach((wheel) => {
-		const cylinderShape = new CANNON.Cylinder(
-			wheel.radius,
-			wheel.radius,
-			wheel.radius / 2,
-			20
-		);
-		const wheelBody = new CANNON.Body({
-			mass: 0,
-			material: wheelMaterial,
-		});
-		wheelBody.type = CANNON.Body.KINEMATIC;
-		wheelBody.collisionFilterGroup = 0; // turn off collisions
-		const quaternion = new CANNON.Quaternion().setFromEuler(-Math.PI / 2, 0, 0);
-		wheelBody.addShape(cylinderShape, new CANNON.Vec3(), quaternion);
-		wheelBodies.push(wheelBody);
-		physicsWorld.addBody(wheelBody);
-	});
-
-	// Update the wheel bodies
-	physicsWorld.addEventListener('postStep', () => {
-		for (let i = 0; i < vehicle.wheelInfos.length; i++) {
-			vehicle.updateWheelTransform(i);
-			const transform = vehicle.wheelInfos[i].worldTransform;
-			const wheelBody = wheelBodies[i];
-			wheelBody.position.copy(transform.position);
-			wheelBody.quaternion.copy(transform.quaternion);
-		}
-	});
-
-	document.addEventListener('keydown', (event) => {
-		const maxSteerVal = 0.5;
-		const maxForce = 1000;
-		const brakeForce = 1000000;
-
-		switch (event.key) {
-			case 'w':
-			case 'ArrowUp':
-				vehicle.applyEngineForce(-maxForce, 2);
-				vehicle.applyEngineForce(-maxForce, 3);
-				break;
-
-			case 's':
-			case 'ArrowDown':
-				vehicle.applyEngineForce(maxForce, 2);
-				vehicle.applyEngineForce(maxForce, 3);
-				break;
-
-			case 'a':
-			case 'ArrowLeft':
-				vehicle.setSteeringValue(maxSteerVal, 0);
-				vehicle.setSteeringValue(maxSteerVal, 1);
-				break;
-
-			case 'd':
-			case 'ArrowRight':
-				vehicle.setSteeringValue(-maxSteerVal, 0);
-				vehicle.setSteeringValue(-maxSteerVal, 1);
-				break;
-
-			case 'b':
-				vehicle.setBrake(brakeForce, 0);
-				vehicle.setBrake(brakeForce, 1);
-				vehicle.setBrake(brakeForce, 2);
-				vehicle.setBrake(brakeForce, 3);
-				break;
-		}
-	});
-
-	document.addEventListener('keyup', (event) => {
-		switch (event.key) {
-			case 'w':
-			case 'ArrowUp':
-				vehicle.applyEngineForce(0, 2);
-				vehicle.applyEngineForce(0, 3);
-				break;
-
-			case 's':
-			case 'ArrowDown':
-				vehicle.applyEngineForce(0, 2);
-				vehicle.applyEngineForce(0, 3);
-				break;
-
-			case 'a':
-			case 'ArrowLeft':
-				vehicle.setSteeringValue(0, 0);
-				vehicle.setSteeringValue(0, 1);
-				break;
-
-			case 'd':
-			case 'ArrowRight':
-				vehicle.setSteeringValue(0, 0);
-				vehicle.setSteeringValue(0, 1);
-				break;
-
-			case 'b':
-				vehicle.setBrake(0, 0);
-				vehicle.setBrake(0, 1);
-				vehicle.setBrake(0, 2);
-				vehicle.setBrake(0, 3);
-				break;
-		}
-	});
-}
+physicsWorld.addEventListener('beginContact', (e: any) => {
+	const { bodyA, bodyB }: { bodyA: CANNON.Body; bodyB: CANNON.Body } = e;
+	if (
+		(bodyA?.id === PLANE_ID || bodyA?.id === CAR_ID) &&
+		(bodyB?.id === PLANE_ID || bodyB?.id === CAR_ID) &&
+		bodyA?.id !== bodyB?.id
+	) {
+		// console.log('beginContact', { bodyA, bodyB });
+		isCarOnGround = true;
+	}
+});
+physicsWorld.addEventListener('endContact', (e: any) => {
+	const { bodyA, bodyB }: { bodyA: CANNON.Body; bodyB: CANNON.Body } = e;
+	if (bodyA?.id === BALL_ID || bodyB?.id === BALL_ID) return;
+	if (
+		(bodyA?.id === PLANE_ID || bodyA?.id === CAR_ID) &&
+		(bodyB?.id === PLANE_ID || bodyB?.id === CAR_ID) &&
+		bodyA?.id !== bodyB?.id
+	) {
+		// console.log('endContact', { bodyA, bodyB });
+		isCarOnGround = false;
+	}
+});
 
 const plane = createHorizontalPlane(100, 100);
 
@@ -459,6 +330,7 @@ const planeBody = new CANNON.Body({
 	mass: 0,
 	material: groundMaterial,
 });
+planeBody.id = PLANE_ID;
 planeBody.addShape(planeShape);
 // planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
 planeBody.position.y = -0.5;
