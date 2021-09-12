@@ -6,7 +6,8 @@
 		"paths": {
 			"three/examples/jsm/libs/tween.module.min": ["./typings/tween.js"]
 		},
-		"strictPropertyInitialization": false
+		"strictPropertyInitialization": false,
+		"target": "ES2017"
 	},
 	"include": ["**/*.ts"]
 }

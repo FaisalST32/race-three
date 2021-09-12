@@ -2,6 +2,8 @@
 //Copyright (c) 2020-2021 Sean Bradley
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { Object3D } from 'three';
+import { PhysicsObject3D } from '../typings/physics-object-3d';
 
 interface Face3 {
 	a: number;

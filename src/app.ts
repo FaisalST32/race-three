@@ -6,8 +6,10 @@ import Stats from 'three/examples/jsm/libs/stats.module';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import CannonDebugRenderer from './physics/cannonDebugRenderer';
 import * as CANNON from 'cannon-es';
+import { PhysicsObject3D } from './typings/physics-object-3d';
 
-let debug = process.env.NODE_ENV !== 'production';
+// let debug = process.env.NODE_ENV !== 'production';
+let debug = false;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcccccc);
@@ -104,23 +106,22 @@ document.addEventListener(
 );
 
 // load a car
-let car: THREE.Object3D;
+let car: PhysicsObject3D;
 const gltfLoader = new GLTFLoader();
 gltfLoader.load(
 	'models/car.glb',
 	(gltf) => {
-		car = gltf.scene;
-		car.traverse((mesh) => {
+		const carObj = gltf.scene as THREE.Object3D;
+		carObj.traverse((mesh) => {
 			if ((mesh as THREE.Mesh).isMesh) {
 				mesh.castShadow = true;
 			}
 		});
-		car.castShadow = true;
-		car.position.y = 1;
-		scene.add(car);
-		car.userData.physicsBody = addCarPhysics(
-			car.children[0].children[0] as THREE.Mesh
-		);
+		carObj.castShadow = true;
+		carObj.position.y = 1;
+		scene.add(carObj);
+		car = new PhysicsObject3D(carObj);
+		car.body = addCarPhysics();
 	},
 	(xhr: { loaded: number; total: number }) => {
 		console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
@@ -130,45 +131,10 @@ gltfLoader.load(
 	}
 );
 
-// add falling spheres
-let spheres: THREE.Mesh[] = [];
-function dropSphere() {
-	const radius = Math.random() * 2 + 1;
-
-	const colors = [0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xffffff];
-	const color = colors[Math.floor(Math.random() * 5)];
-
-	const sphere = new THREE.Mesh(
-		new THREE.SphereGeometry(radius),
-		new THREE.MeshLambertMaterial({ color })
-	);
-
-	const y = Math.random() * 20;
-	const z = Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1);
-	const x = Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1);
-	sphere.position.set(x, y, z);
-	sphere.castShadow = true;
-	scene.add(sphere);
-
-	const sphereBody = new CANNON.Body({
-		mass: 20,
-		material: ballMaterial,
-	});
-	sphereBody.id = BALL_ID;
-	sphereBody.addShape(new CANNON.Sphere(radius));
-	sphereBody.position.set(x, y, z);
-	physicsWorld.addBody(sphereBody);
-	sphere.userData.physicsBody = sphereBody;
-	spheres.push(sphere);
-}
-
-setInterval(dropSphere, 2000);
-
 // add car physics
-let carBody: CANNON.Body;
 let isCarOnGround: boolean = false;
-function addCarPhysics(mesh: THREE.Mesh) {
-	carBody = new CANNON.Body({
+function addCarPhysics() {
+	const carBody = new CANNON.Body({
 		mass: 1000,
 		material: wheelMaterial,
 	});
@@ -255,6 +221,41 @@ physicsWorld.addEventListener('endContact', (e: any) => {
 	}
 });
 
+// add falling spheres
+let spheres: PhysicsObject3D[] = [];
+function dropSphere() {
+	const radius = Math.random() * 2 + 1;
+
+	const colors = [0xff0000, 0x00ff00, 0x0000ff, 0x000000, 0xffffff];
+	const color = colors[Math.floor(Math.random() * 5)];
+
+	const sphereObj = new THREE.Mesh(
+		new THREE.SphereGeometry(radius),
+		new THREE.MeshLambertMaterial({ color })
+	);
+
+	const y = Math.random() * 20;
+	const z = Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1);
+	const x = Math.random() * 10 * (Math.random() > 0.5 ? 1 : -1);
+	sphereObj.position.set(x, y, z);
+	sphereObj.castShadow = true;
+	scene.add(sphereObj);
+
+	const sphereBody = new CANNON.Body({
+		mass: 20,
+		material: ballMaterial,
+	});
+	sphereBody.id = BALL_ID;
+	sphereBody.addShape(new CANNON.Sphere(radius));
+	sphereBody.position.set(x, y, z);
+	physicsWorld.addBody(sphereBody);
+	const sphere = new PhysicsObject3D(sphereObj);
+	sphere.body = sphereBody;
+	spheres.push(sphere);
+}
+
+setInterval(dropSphere, 2000);
+
 // add ground scene object
 const plane = createHorizontalPlane(100, 100);
 scene.add(plane);
@@ -306,49 +307,27 @@ function animate() {
 
 	// const carBody: CANNON.Body = car?.userData?.physicsBody;
 
-	if (car && carBody) {
-		if (carBody.position.y < -2) {
-			carBody.position.set(0, 1, 0);
-			carBody.quaternion.set(0, 0, 0, 1);
+	if (car) {
+		if (car.body.position.y < -2) {
+			car.body.position.set(0, 1, 0);
+			car.body.quaternion.set(0, 0, 0, 1);
 		}
 
-		car.position.set(
-			carBody.position.x,
-			carBody.position.y,
-			carBody.position.z
-		);
-
-		car.quaternion.set(
-			carBody.quaternion.x,
-			carBody.quaternion.y,
-			carBody.quaternion.z,
-			carBody.quaternion.w
-		);
-
-		controls.target.copy(car.position);
+		car.updateFromPhysicsBody();
+		controls.target.copy(car.object.position);
 		keyListeners.forEach((listener) => listener(keysHeld));
 	}
 
 	for (let i = 0; i < spheres.length; i++) {
 		const sphere = spheres[i];
-		const sphereBody: CANNON.Body = sphere.userData.physicsBody;
+		const sphereBody: CANNON.Body = sphere.body;
 		if (sphereBody.position.y < -5) {
 			physicsWorld.removeBody(sphereBody);
-			scene.remove(sphere);
-			spheres[i] = null as unknown as THREE.Mesh;
+			scene.remove(sphere.object);
+			spheres[i] = null as unknown as PhysicsObject3D;
 			continue;
 		}
-		sphere.position.set(
-			sphereBody.position.x,
-			sphereBody.position.y,
-			sphereBody.position.z
-		);
-		sphere.quaternion.set(
-			sphereBody.quaternion.x,
-			sphereBody.quaternion.y,
-			sphereBody.quaternion.z,
-			sphereBody.quaternion.w
-		);
+		sphere.updateFromPhysicsBody();
 	}
 	spheres = spheres.filter(Boolean);
 
