@@ -1,22 +1,13 @@
 import * as THREE from 'three';
-// import { THREE } from 'enable3d';
 import { TWEEN } from 'three/examples/jsm/libs/tween.module.min';
-// import { attachWASDControls, car } from './geometries/car';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { createCones } from './geometries/cones';
 import { createHorizontalPlane } from './geometries/horizontal-plane';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import CannonDebugRenderer from './physics/cannonDebugRenderer';
 import * as CANNON from 'cannon-es';
-// @ts-ignore
-// import * as AmmoPhysics from 'ammo.js/builds/ammo';
-// import { createConvexHullPhysicsShape } from './physics/physics.utils';
 
-// import { AmmoPhysics } from 'three/examples/jsm/physics/AmmoPhysics';
-
-// console.log(Ammo);
-// window.Ammo = Ammo;
+let debug = process.env.NODE_ENV !== 'production';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcccccc);
@@ -24,15 +15,13 @@ scene.background = new THREE.Color(0xcccccc);
 const fog = new THREE.Fog(0xcccccc, 1, 200);
 scene.fog = fog;
 
-// const axes = new THREE.AxesHelper(10);
-// scene.add(axes);
+if (debug) {
+	const axes = new THREE.AxesHelper(10);
+	scene.add(axes);
+}
 
-//physics
-// let Ammo = await AmmoPhysics();
-// let physics: AmmoPhysics = await (AmmoPhysics as any)();
-// let cubeMesh = new THREE.Mesh(Th)
+// setup physics
 
-// console.log(Ammo);
 let physicsWorld = new CANNON.World();
 physicsWorld.gravity.set(0, -20, 0);
 physicsWorld.broadphase = new CANNON.NaiveBroadphase();
@@ -66,14 +55,10 @@ const PLANE_ID = 1;
 const CAR_ID = 2;
 const BALL_ID = 3;
 
-// const cannonDebugRenderer = new CannonDebugRenderer(scene, physicsWorld);
-
-let car: THREE.Object3D;
-// add the car
-// car.position.y = 0.5;
-// car.castShadow = true;
-// scene.add(car);
-// attachWASDControls(car, render);
+let cannonDebugRenderer: CannonDebugRenderer;
+if (debug) {
+	cannonDebugRenderer = new CannonDebugRenderer(scene, physicsWorld);
+}
 
 // add the camera
 const camera = new THREE.PerspectiveCamera(
@@ -85,17 +70,6 @@ const camera = new THREE.PerspectiveCamera(
 
 camera.position.z = 15;
 camera.position.y = 10;
-
-// add the cones
-const cones = createCones({
-	planeLength: 30,
-	planeWidth: 24,
-	count: 100,
-	maxConeHeight: 1,
-	maxConeRadius: 0.4,
-});
-
-// scene.add(...cones);
 
 // add directional light with shadow
 const light = new THREE.DirectionalLight();
@@ -112,9 +86,14 @@ light.position.z = 60;
 light.position.y = 20;
 scene.add(light);
 
-// key listeners
-let keysHeld: any = {};
+if (debug) {
+	const helper = new THREE.CameraHelper(light.shadow.camera);
+	scene.add(helper);
+}
 
+// key listeners
+let keyListeners: Function[] = [];
+let keysHeld: any = {};
 document.addEventListener(
 	'keydown',
 	(e: KeyboardEvent) => (keysHeld[e.key.toUpperCase()] = true)
@@ -124,9 +103,8 @@ document.addEventListener(
 	(e: KeyboardEvent) => delete keysHeld[e.key.toUpperCase()]
 );
 
-let keyListeners: Function[] = [];
-
 // load a car
+let car: THREE.Object3D;
 const gltfLoader = new GLTFLoader();
 gltfLoader.load(
 	'models/car.glb',
@@ -135,8 +113,6 @@ gltfLoader.load(
 		car.traverse((mesh) => {
 			if ((mesh as THREE.Mesh).isMesh) {
 				mesh.castShadow = true;
-				// physics.addMesh(mesh as THREE.Mesh, 1);
-				// mesh.receiveShadow = true;
 			}
 		});
 		car.castShadow = true;
@@ -145,9 +121,6 @@ gltfLoader.load(
 		car.userData.physicsBody = addCarPhysics(
 			car.children[0].children[0] as THREE.Mesh
 		);
-
-		// addVehicle();
-		// physics.addMesh(car as THREE.Mesh, 1);
 	},
 	(xhr: { loaded: number; total: number }) => {
 		console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
@@ -157,8 +130,8 @@ gltfLoader.load(
 	}
 );
 
+// add falling spheres
 let spheres: THREE.Mesh[] = [];
-
 function dropSphere() {
 	const radius = Math.random() * 2 + 1;
 
@@ -189,50 +162,28 @@ function dropSphere() {
 	spheres.push(sphere);
 }
 
-// const helper = new THREE.CameraHelper(light.shadow.camera);
-// scene.add(helper);
+setInterval(dropSphere, 2000);
+
+// add car physics
 let carBody: CANNON.Body;
 let isCarOnGround: boolean = false;
 function addCarPhysics(mesh: THREE.Mesh) {
 	carBody = new CANNON.Body({
 		mass: 1000,
-		// velocity: new CANNON.Vec3(0, 0, -20),
 		material: wheelMaterial,
-		// angularVelocity: new CANNON.Vec3(0, 0, 1),
 	});
 	carBody.id = CAR_ID;
-	// const vehicle = new CANNON.RaycastVehicle({
-	// 	chassisBody: carBody
-	// })
-	// carBody.velocity = new CANNON.Vec3(0, 0, 1);
 	carBody.addShape(
 		new CANNON.Box(new CANNON.Vec3(0.8, 0.6, 1.8)),
 		new CANNON.Vec3(0, 0.55, 0)
 	);
-	// carBody.addShape(
-	// 	new CANNON.Box(new CANNON.Vec3(0.025, 0.2, 0.2)),
-	// 	new CANNON.Vec3(0.4, -0.3, 0.9)
-	// );
-	// carBody.addShape(
-	// 	new CANNON.Box(new CANNON.Vec3(0.025, 0.2, 0.2)),
-	// 	new CANNON.Vec3(0.4, -0.3, -0.9)
-	// );
-	// carBody.addShape(
-	// 	new CANNON.Box(new CANNON.Vec3(0.025, 0.2, 0.2)),
-	// 	new CANNON.Vec3(-0.4, -0.3, 0.9)
-	// );
-	// carBody.addShape(
-	// 	new CANNON.Box(new CANNON.Vec3(0.025, 0.2, 0.2)),
-	// 	new CANNON.Vec3(-0.4, -0.3, -0.9)
-	// );
 	carBody.position.set(0, 1, 0);
-	// carBody
 	carBody.fixedRotation = true;
 	carBody.angularDamping = 0.99;
 	carBody.linearDamping = 0.95;
 	physicsWorld.addBody(carBody);
-	// console.log(carBody.quaternion);
 
+	// add car movement listeners
 	keyListeners.push((keys: any) => {
 		if (!isCarOnGround) return;
 		if (!keys.W && !keys.S) {
@@ -240,27 +191,9 @@ function addCarPhysics(mesh: THREE.Mesh) {
 		}
 		const speed = 20;
 		const direction = keys.W ? -1 : 1;
-		// let newVelocity = new THREE.Vector3(
-		// 	currentVelocity.x,
-		// 	currentVelocity.y,
-		// 	direction * speed
-		// ).normalize();
 
-		// let newVelocity = new CANNON.Vec3(0, 0, direction * speed);
-		// newVelocity = carBody.quaternion.vmult(newVelocity);
-		// carBody.velocity.set(newVelocity.x, newVelocity.y, newVelocity.z);
-
-		const currentVelocity = carBody.velocity.clone();
 		const localVelocity = new CANNON.Vec3(0, 0, direction * speed);
-		// const finalVelocity = currentVelocity.vadd(localVelocity);
 		carBody.quaternion.normalize().vmult(localVelocity, carBody.velocity);
-
-		// carBody.velocity.set(
-		// 	normalizedVelocity.x,
-		// 	// TODO: Figure out a better way to incorporate gravity
-		// 	Math.min(normalizedVelocity.y, 0),
-		// 	normalizedVelocity.z
-		// );
 	});
 
 	keyListeners.push((keys: any) => {
@@ -297,6 +230,7 @@ function addCarPhysics(mesh: THREE.Mesh) {
 	return carBody;
 }
 
+// add car contact listeners
 physicsWorld.addEventListener('beginContact', (e: any) => {
 	const { bodyA, bodyB }: { bodyA: CANNON.Body; bodyB: CANNON.Body } = e;
 	if (
@@ -321,10 +255,11 @@ physicsWorld.addEventListener('endContact', (e: any) => {
 	}
 });
 
+// add ground scene object
 const plane = createHorizontalPlane(100, 100);
-
 scene.add(plane);
 
+// add ground physics object
 const planeShape = new CANNON.Box(new CANNON.Vec3(50, 0.5, 50));
 const planeBody = new CANNON.Body({
 	mass: 0,
@@ -332,32 +267,24 @@ const planeBody = new CANNON.Body({
 });
 planeBody.id = PLANE_ID;
 planeBody.addShape(planeShape);
-// planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
 planeBody.position.y = -0.5;
 physicsWorld.addBody(planeBody);
 
-// physics.addMesh(plane, 0);
-
-// const gridHelper = new THREE.GridHelper(100, 50, 0xff0000, 0x00ff00);
-// scene.add(gridHelper);
-
+//add a renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setPixelRatio(window.devicePixelRatio);
-
-// controls.addEventListener('change', render);
-
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+// add orbit controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.minPolarAngle = Math.PI / 4;
 controls.maxPolarAngle = Math.PI / 2.5;
 controls.maxDistance = 50;
 controls.minDistance = 40;
-// controls.maxAzimuthAngle = Math.PI / 3;
-// controls.minAzimuthAngle = Math.PI / 3;
 
+// add stats panel
 const stats = Stats();
 document.body.appendChild(stats.dom);
 
@@ -369,8 +296,6 @@ function onWindowResize() {
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	render();
 }
-
-setInterval(dropSphere, 2000);
 
 let clock = new THREE.Clock();
 function animate() {
@@ -427,10 +352,11 @@ function animate() {
 	}
 	spheres = spheres.filter(Boolean);
 
-	// console.log(car.position, carBody.position);
 	controls.update();
 	TWEEN.update();
-	// cannonDebugRenderer.update();
+	if (debug) {
+		cannonDebugRenderer.update();
+	}
 	render();
 	stats.update();
 }
