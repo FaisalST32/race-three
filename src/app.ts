@@ -106,34 +106,46 @@ document.addEventListener(
 );
 
 // load a car
-let car: PhysicsObject3D;
 const gltfLoader = new GLTFLoader();
-gltfLoader.load(
-	'models/car.glb',
-	(gltf) => {
-		const carObj = gltf.scene as THREE.Object3D;
-		carObj.traverse((mesh) => {
-			if ((mesh as THREE.Mesh).isMesh) {
-				mesh.castShadow = true;
+
+let car: PhysicsObject3D;
+
+function loadCar(): Promise<PhysicsObject3D> {
+	return new Promise((res, rej) => {
+		gltfLoader.load(
+			'models/car.glb',
+			(gltf) => {
+				const carObj = gltf.scene as THREE.Object3D;
+				carObj.traverse((mesh) => {
+					if ((mesh as THREE.Mesh).isMesh) {
+						mesh.castShadow = true;
+					}
+				});
+				carObj.castShadow = true;
+				carObj.position.y = 1;
+				scene.add(carObj);
+				const car = new PhysicsObject3D(carObj);
+				res(car);
+			},
+			(xhr: { loaded: number; total: number }) => {
+				console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+			},
+			(error: any) => {
+				console.log('An error happened');
+				rej(error);
 			}
-		});
-		carObj.castShadow = true;
-		carObj.position.y = 1;
-		scene.add(carObj);
-		car = new PhysicsObject3D(carObj);
-		car.body = addCarPhysics();
-	},
-	(xhr: { loaded: number; total: number }) => {
-		console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-	},
-	(error: any) => {
-		console.log('An error happened');
-	}
-);
+		);
+	});
+}
+
+loadCar().then((carLoaded) => {
+	car = carLoaded;
+	addCarPhysics(car);
+	attachWASDControls(car);
+});
 
 // add car physics
-let isCarOnGround: boolean = false;
-function addCarPhysics() {
+function addCarPhysics(target: PhysicsObject3D) {
 	const carBody = new CANNON.Body({
 		mass: 1000,
 		material: wheelMaterial,
@@ -148,8 +160,12 @@ function addCarPhysics() {
 	carBody.angularDamping = 0.99;
 	carBody.linearDamping = 0.95;
 	physicsWorld.addBody(carBody);
+	target.body = carBody;
+}
 
-	// add car movement listeners
+let isCarOnGround: boolean = false;
+function attachWASDControls(target: PhysicsObject3D) {
+	// forward and reverse
 	keyListeners.push((keys: any) => {
 		if (!isCarOnGround) return;
 		if (!keys.W && !keys.S) {
@@ -159,11 +175,14 @@ function addCarPhysics() {
 		const direction = keys.W ? -1 : 1;
 
 		const localVelocity = new CANNON.Vec3(0, 0, direction * speed);
-		carBody.quaternion.normalize().vmult(localVelocity, carBody.velocity);
+		target.body.quaternion
+			.normalize()
+			.vmult(localVelocity, target.body.velocity);
 	});
 
+	// turn
 	keyListeners.push((keys: any) => {
-		const isCarMoving = keys.W || keys.S;
+		const isCarMoving = keys.W || keys.S || keys[' '];
 		if (!isCarMoving) return;
 		if (!keys.D && !keys.A) {
 			return;
@@ -172,11 +191,11 @@ function addCarPhysics() {
 		switch (true) {
 			case keys.A:
 				direction = -1;
-				carBody.angularVelocity.y = -direction * Math.PI;
+				target.body.angularVelocity.y = -direction * Math.PI;
 				break;
 			case keys.D:
 				direction = 1;
-				carBody.angularVelocity.y = -direction * Math.PI;
+				target.body.angularVelocity.y = -direction * Math.PI;
 				break;
 
 			default:
@@ -184,16 +203,58 @@ function addCarPhysics() {
 		}
 	});
 
+	// impulse
 	keyListeners.push((keys: any) => {
 		if (!keys[' '] || !isCarOnGround) {
 			return;
 		}
 		console.log('impulsing');
-		var accelerationDirection = new CANNON.Vec3(0, 0, -10000);
-		var accelerationImpulse = carBody.quaternion.vmult(accelerationDirection);
-		carBody.applyImpulse(accelerationImpulse);
+		var accelerationDirection = new CANNON.Vec3(0, 0, -2000);
+		var accelerationImpulse = target.body.quaternion.vmult(
+			accelerationDirection
+		);
+		target.body.applyImpulse(accelerationImpulse);
 	});
-	return carBody;
+
+	// torque (experimental)
+	keyListeners.push((keys: any) => {
+		if (!keys.ARROWLEFT && !keys.ARROWRIGHT) {
+			return;
+		}
+
+		const isCarMoving =
+			(keys.W || keys.S || keys[' '] || keys['Z']) && !(keys[' '] && keys['Z']);
+		if (!isCarMoving) return;
+
+		console.log('applying torque');
+		let torque: CANNON.Vec3;
+		switch (true) {
+			case keys.ARROWLEFT:
+				torque = new CANNON.Vec3(0, 20000, 0);
+				target.body.applyTorque(torque);
+				break;
+			case keys.ARROWRIGHT:
+				torque = new CANNON.Vec3(0, -20000, 0);
+				target.body.applyTorque(torque);
+				break;
+
+			default:
+				return;
+		}
+	});
+
+	// brake (experimental)
+	keyListeners.push((keys: any) => {
+		if (!keys.Z || !isCarOnGround) {
+			return;
+		}
+		console.log('braking');
+		var decelerationDirection = new CANNON.Vec3(0, 0, 1000);
+		var decelerationImpulse = target.body.quaternion.vmult(
+			decelerationDirection
+		);
+		target.body.applyImpulse(decelerationImpulse);
+	});
 }
 
 // add car contact listeners
