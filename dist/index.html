@@ -14,18 +14,102 @@
 
 			#info {
 				position: fixed;
-				font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande',
-					'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 				left: 10px;
 				bottom: 10px;
 				font-size: 30px;
-				width: 300px;
+				width: 400px;
 				color: #ccc;
 			}
+
+			:is(#loading, #welcome, #end-screen) {
+				position: fixed;
+				left: 0;
+				top: 0;
+				height: 100vh;
+				width: 100vw;
+				background-color: rgba(0, 0, 0, 0.5);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			#loading code {
+				color: white;
+				font-size: 40px;
+				user-select: none;
+			}
+
+			#welcome code {
+				color: white;
+				font-size: 25px;
+				text-align: center;
+			}
+
+			#end-screen code {
+				color: white;
+				font-size: 25px;
+				text-align: center;
+				margin: 10px;
+				display: block;
+			}
+
+			#final-score#final-score {
+				font-size: 40px;
+				font-weight: bold;
+			}
+
+			#start-button {
+				text-align: center;
+				font-size: 20px;
+				padding: 10px 20px;
+				border: solid 2px purple;
+				background-color: transparent;
+				outline: none;
+				color: white;
+				border-radius: 10px;
+				cursor: pointer;
+				margin-top: 20px;
+				transition: background-color 200ms ease-out;
+			}
+
+			#start-button:hover {
+				background-color: purple;
+			}
+
+			:is(.on-loaded, .on-end) {
+				visibility: hidden;
+			}
+
+			/* .on-start {
+				visibility: hidden;
+			} */
 		</style>
 	</head>
 	<body>
-		<div id="info">Use W A S D keys to move the car</div>
+		<canvas id="game" class="on-start"></canvas>
+		<div id="loading" class="loading">
+			<code>Loading...</code>
+		</div>
+		<div id="welcome" class="on-load">
+			<code>
+				Use WASD keys to move the car.<br />
+				Try to push as many balls off the platform as possible.<br />
+				Avoid falling off the platform.<br />
+				Score as many points as possible within 60 seconds<br />
+				<button id="start-button">Start Game</button>
+			</code>
+		</div>
+		<div id="info" class="on-start">
+			<code>Score: <span id="score">0</span></code> |
+			<code>Timer: <span id="timer">60</span></code>
+		</div>
+		<div id="end-screen" class="on-end">
+			<div>
+				<code>Time's Up</code>
+				<code>Your Score</code>
+				<code id="final-score">0</code>
+			</div>
+		</div>
 		<script type="text/javascript" src="main.js"></script>
 	</body>
 </html>

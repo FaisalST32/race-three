@@ -22,6 +22,10 @@ if (debug) {
 	scene.add(axes);
 }
 
+let gameStarted = false;
+let score = 0;
+let timer = 60;
+
 // setup physics
 
 let physicsWorld = new CANNON.World();
@@ -104,6 +108,7 @@ document.addEventListener(
 	'keyup',
 	(e: KeyboardEvent) => delete keysHeld[e.key.toUpperCase()]
 );
+document.getElementById('start-button')?.addEventListener('click', startGame);
 
 // load a car
 const gltfLoader = new GLTFLoader();
@@ -140,8 +145,7 @@ function loadCar(): Promise<PhysicsObject3D> {
 
 loadCar().then((carLoaded) => {
 	car = carLoaded;
-	addCarPhysics(car);
-	attachWASDControls(car);
+	gameLoaded();
 });
 
 // add car physics
@@ -160,6 +164,16 @@ function addCarPhysics(target: PhysicsObject3D) {
 	carBody.angularDamping = 0.99;
 	carBody.linearDamping = 0.95;
 	physicsWorld.addBody(carBody);
+	carBody.addEventListener('collide', (e: { body: CANNON.Body }) => {
+		const { body }: { body: CANNON.Body } = e;
+		if (body.id !== BALL_ID) return;
+		const sphere = spheres.find((s) => s.body === body);
+		if (!sphere) return;
+		(
+			(sphere.object as THREE.Mesh).material as THREE.MeshLambertMaterial
+		).color = new THREE.Color(0x800080);
+		sphere.object.userData.userSphere = true;
+	});
 	target.body = carBody;
 }
 
@@ -208,7 +222,6 @@ function attachWASDControls(target: PhysicsObject3D) {
 		if (!keys[' '] || !isCarOnGround) {
 			return;
 		}
-		console.log('impulsing');
 		var accelerationDirection = new CANNON.Vec3(0, 0, -2000);
 		var accelerationImpulse = target.body.quaternion.vmult(
 			accelerationDirection
@@ -226,7 +239,6 @@ function attachWASDControls(target: PhysicsObject3D) {
 			(keys.W || keys.S || keys[' '] || keys['Z']) && !(keys[' '] && keys['Z']);
 		if (!isCarMoving) return;
 
-		console.log('applying torque');
 		let torque: CANNON.Vec3;
 		switch (true) {
 			case keys.ARROWLEFT:
@@ -248,7 +260,6 @@ function attachWASDControls(target: PhysicsObject3D) {
 		if (!keys.Z || !isCarOnGround) {
 			return;
 		}
-		console.log('braking');
 		var decelerationDirection = new CANNON.Vec3(0, 0, 1000);
 		var decelerationImpulse = target.body.quaternion.vmult(
 			decelerationDirection
@@ -265,7 +276,6 @@ physicsWorld.addEventListener('beginContact', (e: any) => {
 		(bodyB?.id === PLANE_ID || bodyB?.id === CAR_ID) &&
 		bodyA?.id !== bodyB?.id
 	) {
-		// console.log('beginContact', { bodyA, bodyB });
 		isCarOnGround = true;
 	}
 });
@@ -277,7 +287,6 @@ physicsWorld.addEventListener('endContact', (e: any) => {
 		(bodyB?.id === PLANE_ID || bodyB?.id === CAR_ID) &&
 		bodyA?.id !== bodyB?.id
 	) {
-		// console.log('endContact', { bodyA, bodyB });
 		isCarOnGround = false;
 	}
 });
@@ -315,7 +324,58 @@ function dropSphere() {
 	spheres.push(sphere);
 }
 
-setInterval(dropSphere, 2000);
+function gameLoaded() {
+	document.querySelectorAll('.loading').forEach((el) => {
+		(el as HTMLElement).style.visibility = 'hidden';
+	});
+	document.querySelectorAll('.on-load').forEach((el) => {
+		(el as HTMLElement).style.visibility = 'visible';
+	});
+}
+
+function startGame() {
+	addCarPhysics(car);
+	attachWASDControls(car);
+	setInterval(dropSphere, 2000);
+	document.querySelectorAll(':is(.loading, .on-load)').forEach((el) => {
+		(el as HTMLElement).style.visibility = 'hidden';
+	});
+	document.querySelectorAll('.on-start').forEach((el) => {
+		(el as HTMLElement).style.visibility = 'visible';
+	});
+	gameStarted = true;
+	beginTimer();
+}
+
+function beginTimer() {
+	const timerEl = document.getElementById('timer');
+	const interval = setInterval(() => {
+		timerEl!.innerHTML = `${timer--}`;
+		if (timer === 0) {
+			clearInterval(interval);
+			endGame();
+		}
+	}, 1000);
+}
+
+function endGame() {
+	timer = 60;
+	document
+		.querySelectorAll(':is(.loading, .on-load, .on-start)')
+		.forEach((el) => {
+			(el as HTMLElement).style.visibility = 'hidden';
+		});
+
+	document.getElementById('final-score')!.innerHTML = `${score}`;
+	document.querySelectorAll('.on-end').forEach((el) => {
+		(el as HTMLElement).style.visibility = 'visible';
+	});
+}
+
+function scorePoint(points: number) {
+	score += points;
+	document.getElementById('score')!.innerHTML = `${score}`;
+}
 
 // add ground scene object
 const plane = createHorizontalPlane(100, 100);
@@ -333,7 +393,9 @@ planeBody.position.y = -0.5;
 physicsWorld.addBody(planeBody);
 
 //add a renderer
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({
+	canvas: document.getElementById('game') as HTMLCanvasElement,
+});
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -362,6 +424,9 @@ function onWindowResize() {
 let clock = new THREE.Clock();
 function animate() {
 	requestAnimationFrame(animate);
+	if (!gameStarted) {
+		return;
+	}
 
 	let delta = Math.min(clock.getDelta(), 0.1);
 	physicsWorld.step(delta);
@@ -372,6 +437,7 @@ function animate() {
 		if (car.body.position.y < -2) {
 			car.body.position.set(0, 1, 0);
 			car.body.quaternion.set(0, 0, 0, 1);
+			scorePoint(-10);
 		}
 
 		car.updateFromPhysicsBody();
@@ -383,6 +449,9 @@ function animate() {
 		const sphere = spheres[i];
 		const sphereBody: CANNON.Body = sphere.body;
 		if (sphereBody.position.y < -5) {
+			if (sphere.object?.userData?.userSphere) {
+				scorePoint(5);
+			}
 			physicsWorld.removeBody(sphereBody);
 			scene.remove(sphere.object);
 			spheres[i] = null as unknown as PhysicsObject3D;
