@@ -23,6 +23,7 @@
 		"webpack-merge": "^5.8.0"
 	},
 	"dependencies": {
-		"cannon-es": "^0.18.0"
+		"cannon-es": "^0.18.0",
+		"socket.io-client": "^4.2.0"
 	}
 }
