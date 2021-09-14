@@ -10,6 +10,7 @@ import { PhysicsObject3D } from './typings/physics-object-3d';
 
 // let debug = process.env.NODE_ENV !== 'production';
 let debug = false;
+const GAME_TIME = 60;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcccccc);
@@ -24,7 +25,7 @@ if (debug) {
 
 let gameStarted = false;
 let score = 0;
-let timer = 60;
+let timer = GAME_TIME;
 
 // setup physics
 
@@ -109,6 +110,9 @@ document.addEventListener(
 	(e: KeyboardEvent) => delete keysHeld[e.key.toUpperCase()]
 );
 document.getElementById('start-button')?.addEventListener('click', startGame);
+document
+	.getElementById('restart-button')
+	?.addEventListener('click', restartGame);
 
 // load a car
 const gltfLoader = new GLTFLoader();
@@ -350,7 +354,7 @@ function startGame() {
 function beginTimer() {
 	const timerEl = document.getElementById('timer');
 	const interval = setInterval(() => {
-		timerEl!.innerHTML = `${timer--}`;
+		timerEl!.innerHTML = `${--timer}`;
 		if (timer === 0) {
 			clearInterval(interval);
 			endGame();
@@ -359,7 +363,7 @@ function beginTimer() {
 }
 
 function endGame() {
-	timer = 60;
+	gameStarted = false;
 	document
 		.querySelectorAll(':is(.loading, .on-load, .on-start)')
 		.forEach((el) => {
@@ -375,6 +379,44 @@ function endGame() {
 function scorePoint(points: number) {
 	score += points;
 	document.getElementById('score')!.innerHTML = `${score}`;
+}
+
+function restartGame() {
+	removeAllSpheres();
+	resetCar();
+	resetScore();
+	resetTimer();
+	document
+		.querySelectorAll(':is(.loading, .on-load, .on-start, .on-end)')
+		.forEach((el) => {
+			(el as HTMLElement).style.visibility = 'hidden';
+		});
+	document.querySelectorAll('.on-start').forEach((el) => {
+		(el as HTMLElement).style.visibility = 'visible';
+	});
+	gameStarted = true;
+}
+
+function removeAllSpheres() {
+	spheres.forEach((sphere) => {
+		scene.remove(sphere.object);
+		physicsWorld.removeBody(sphere.body);
+	});
+}
+
+function resetCar() {
+	car.body.position.set(0, 1, 0);
+	car.body.quaternion.set(0, 0, 0, 1);
+}
+
+function resetScore() {
+	score = 0;
+	document.getElementById('score')!.innerHTML = `${score}`;
+}
+
+function resetTimer() {
+	timer = GAME_TIME;
+	beginTimer();
 }
 
 // add ground scene object
@@ -435,8 +477,7 @@ function animate() {
 
 	if (car) {
 		if (car.body.position.y < -2) {
-			car.body.position.set(0, 1, 0);
-			car.body.quaternion.set(0, 0, 0, 1);
+			resetCar();
 			scorePoint(-10);
 		}
 
