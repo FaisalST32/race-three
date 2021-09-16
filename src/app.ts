@@ -209,11 +209,11 @@ function attachWASDControls(target: PhysicsObject3D) {
 		switch (true) {
 			case keys.A:
 				direction = -1;
-				target.body.angularVelocity.y = -direction * Math.PI;
+				target.body.angularVelocity.y = -direction * Math.PI * 1.5;
 				break;
 			case keys.D:
 				direction = 1;
-				target.body.angularVelocity.y = -direction * Math.PI;
+				target.body.angularVelocity.y = -direction * Math.PI * 1.5;
 				break;
 
 			default:
