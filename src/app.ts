@@ -189,7 +189,7 @@ function attachWASDControls(target: PhysicsObject3D) {
 		if (!keys.W && !keys.S) {
 			return;
 		}
-		const speed = 20;
+		const speed = 30;
 		const direction = keys.W ? -1 : 1;
 
 		const localVelocity = new CANNON.Vec3(0, 0, direction * speed);
