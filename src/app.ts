@@ -9,7 +9,7 @@ import * as CANNON from 'cannon-es';
 import { PhysicsObject3D } from './typings/physics-object-3d';
 
 // let debug = process.env.NODE_ENV !== 'production';
-let debug = false;
+let debug = true;
 const GAME_TIME = 60;
 
 const scene = new THREE.Scene();
@@ -122,7 +122,7 @@ let car: PhysicsObject3D;
 function loadCar(): Promise<PhysicsObject3D> {
 	return new Promise((res, rej) => {
 		gltfLoader.load(
-			'models/car.glb',
+			'models/car3.glb',
 			(gltf) => {
 				const carObj = gltf.scene as THREE.Object3D;
 				carObj.traverse((mesh) => {
@@ -160,8 +160,8 @@ function addCarPhysics(target: PhysicsObject3D) {
 	});
 	carBody.id = CAR_ID;
 	carBody.addShape(
-		new CANNON.Box(new CANNON.Vec3(0.8, 0.6, 1.8)),
-		new CANNON.Vec3(0, 0.55, 0)
+		new CANNON.Box(new CANNON.Vec3(0.8, 0.8, 1.8)),
+		new CANNON.Vec3(0, 0.8, 0)
 	);
 	carBody.position.set(0, 1, 0);
 	carBody.fixedRotation = true;
@@ -448,7 +448,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.minPolarAngle = Math.PI / 4;
 controls.maxPolarAngle = Math.PI / 2.5;
 controls.maxDistance = 50;
-controls.minDistance = 40;
+controls.minDistance = 10;
 
 // add stats panel
 const stats = Stats();
@@ -473,9 +473,8 @@ function animate() {
 	let delta = Math.min(clock.getDelta(), 0.1);
 	physicsWorld.step(delta);
 
-	// const carBody: CANNON.Body = car?.userData?.physicsBody;
-
 	if (car) {
+		// car falls off the platform
 		if (car.body.position.y < -2) {
 			resetCar();
 			scorePoint(-10);
@@ -489,6 +488,8 @@ function animate() {
 	for (let i = 0; i < spheres.length; i++) {
 		const sphere = spheres[i];
 		const sphereBody: CANNON.Body = sphere.body;
+
+		// if sphere falls off the platform
 		if (sphereBody.position.y < -5) {
 			if (sphere.object?.userData?.userSphere) {
 				scorePoint(5);
