@@ -9,7 +9,7 @@ import * as CANNON from 'cannon-es';
 import { PhysicsObject3D } from './typings/physics-object-3d';
 
 // let debug = process.env.NODE_ENV !== 'production';
-let debug = true;
+let debug = false;
 const GAME_TIME = 60;
 
 const scene = new THREE.Scene();
@@ -75,8 +75,8 @@ const camera = new THREE.PerspectiveCamera(
 	2000
 );
 
-camera.position.z = 15;
-camera.position.y = 10;
+camera.position.z = 25;
+camera.position.y = 20;
 
 // add directional light with shadow
 const light = new THREE.DirectionalLight();
@@ -422,6 +422,12 @@ function resetTimer() {
 // add ground scene object
 const plane = createHorizontalPlane(100, 100);
 scene.add(plane);
+new THREE.TextureLoader().loadAsync('./models/texture.png').then((texture) => {
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.wrapT = THREE.RepeatWrapping;
+	texture.repeat.set(8, 8);
+	(plane.material as THREE.MeshPhongMaterial).map = texture;
+});
 
 // add ground physics object
 const planeShape = new CANNON.Box(new CANNON.Vec3(50, 0.5, 50));
